@@ -1,0 +1,135 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.15.04
+Created On: 5/5/2017 3:44:52 PM
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Title      :
+00000000                             3  * Written by :
+00000000                             4  * Date       :
+00000000                             5  * Description:
+00000000                             6  *-----------------------------------------------------------
+00001000                             7      ORG    $1000
+00001000                             8  START:                  ; first instruction of program
+00001000                             9  
+00001000                            10  *readed in string A2 and A3 from the code before 
+00001000                            11  **we need to convert it to hex, so we use the logic from below
+00001000                            12  *this code  is currently for  A2. Reusable for A3 as well if
+00001000                            13  * value is  changed. 
+00001000                            14  
+00001000                            15  
+00001000                            16  *NOTE: address is changable, adjust it to whatever we need:)* 
+00001000  2A7C 0000056A             17      MOVEA.L #$56A, A5
+00001006                            18  
+00001006                            19  
+00001006                            20  *Store i = 8 for looping for 8 characters*     
+00001006  123C 0009                 21      MOVE.B  #9, D1      
+0000100A                            22  
+0000100A                            23  
+0000100A                            24  * here we are going to use the loop to scan for 
+0000100A                            25  * potential letters and  numbers. This part is representing 
+0000100A                            26  * the for llop from 8 to 0 at D1
+0000100A                            27  STRTOHEX  
+0000100A                            28  
+0000100A                            29  * check +1 for trial attempt for first digit.
+0000100A  1619                      30      MOVE.B  (A1)+,D3        
+0000100C  5301                      31      SUB.B   #1, D1 
+0000100E                            32  
+0000100E                            33  *if our counter is 0, then we are done with checking digit by digit.     
+0000100E  B23C 0000                 34      CMP.B   #0, D1      
+00001012  6700 0038                 35      BEQ     ADD$5LOGIC    
+00001016                            36   
+00001016                            37  *compare to 40/39 to see numbers/letters
+00001016  B63C 0040                 38      CMP.B   #$40, D3    
+0000101A  6E00 000A                 39      BGT     POSSIBLE_LETTER 
+0000101E                            40      
+0000101E  B63C 003A                 41      CMP.B   #$3A, D3     
+00001022  6D00 0012                 42      BLT     POSSIBLE_NUM 
+00001026                            43      
+00001026                            44  POSSIBLE_LETTER
+00001026                            45  *is it full?has data? fix if  not
+00001026  B63C 0046                 46      CMP.B   #$46, D3    
+0000102A  6E00 001A                 47      BGT     NOTFULL8 
+0000102E                            48      
+0000102E                            49  *convert using -
+0000102E  0403 0037                 50      SUB.B   #$37, D3    
+00001032  1AC3                      51      MOVE.B  D3, (A5)+  
+00001034                            52  *go back if success
+00001034  60D4                      53      BRA STRTOHEX         
+00001036                            54  
+00001036                            55  POSSIBLE_NUM
+00001036                            56  *same logic as letter: check if full, fix
+00001036  B63C 0030                 57      CMP.B   #$30, D3    
+0000103A  6D00 000A                 58      BLT     NOTFULL8   
+0000103E                            59  
+0000103E                            60  *convert by -
+0000103E  0403 0030                 61      SUB.B   #$30, D3    
+00001042  1AC3                      62      MOVE.B  D3, (A5)+   
+00001044                            63  
+00001044                            64  *go back
+00001044  60C4                      65      BRA STRTOHEX  
+00001046                            66  
+00001046                            67         
+00001046                            68  NOTFULL8 
+00001046                            69  *used in possible num/leter
+00001046                            70  * fills  empty space with 0's if user didn't 
+00001046  1AFC 0000                 71      MOVE.B  #$00, (A5)+ 
+0000104A                            72  
+0000104A  60BE                      73      BRA STRTOHEX         
+0000104C                            74  
+0000104C                            75  
+0000104C                            76  * loop used to shift the data we need
+0000104C                            77  * for the correct conversion. 
+0000104C                            78  ADD$5LOGIC
+0000104C                            79  *reset a5, make d1 = hex5
+0000104C  2A7C 0000056A             80      MOVEA.L #$56A, A5  
+00001052                            81  *adjust for the next loop 
+00001052  123C 0005                 82      MOVE.B  #5, D1  
+00001056                            83  
+00001056                            84  
+00001056                            85  *loop for d1 = 5 going down    
+00001056                            86  LOOP_D1_5 
+00001056                            87  
+00001056                            88  *sub 1 attempt 
+00001056  5301                      89      SUB.B   #1, D1
+00001058                            90  *check if done and are at 0 already      
+00001058  B23C 0000                 91      CMP.B   #0, D1      
+0000105C                            92  *///////////////////////////////////////////////////////////////////////////////////////////////////////
+0000105C                            93  *if all done and correct, go to ????
+Line 94 ERROR: Invalid syntax
+0000105C                            94      BEQ     ????       
+0000105C                            95      
+0000105C                            96  *////////////////////////////////////////////////////////////////////////////////////////////////////////
+0000105C                            97      
+0000105C  141D                      98      MOVE.B (A5)+, D2    
+0000105E                            99  
+0000105E                           100  *shifting logic
+0000105E  E98A                     101      LSL.L   #4, D2      
+00001060  D41D                     102      ADD.B  (A5)+,D2     
+00001062  E18B                     103      LSL.L   #8, D3      
+00001064                           104      
+00001064                           105  *add result
+00001064  D602                     106      ADD.B   D2, D3      
+00001066                           107  
+00001066                           108  *repeat till done
+00001066  60EE                     109      BRA LOOP_D1_5            
+00001068                           110  
+00001068                           111  SIMHALT             ; halt simulator
+00001068                           112  
+00001068                           113  
+00001068                           114      END    START        ; last line of source
+
+1 error detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+ADD$5LOGIC          104C
+LOOP_D1_5           1056
+NOTFULL8            1046
+POSSIBLE_LETTER     1026
+POSSIBLE_NUM        1036
+SIMHALT             1068
+START               1000
+STRTOHEX            100A
