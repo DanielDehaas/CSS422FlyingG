@@ -5,7 +5,13 @@
 * Description:
 *-----------------------------------------------------------
     ORG    $1000
-START:                  ; first instruction of program
+START:                 
+
+*constants etc...
+cash    EQU     $24
+comma   EQU     $2C
+CR      EQU     $0D
+LF      EQU     $0A
 
 * Put program code here
 
@@ -21,12 +27,13 @@ EAADDI  MOVE.W  D4,-(SP)    *BACKUP D4
         CLR.B   D5          *CLEAR D5 before use   
         MOVE.B  D4,D5       *move D4 to D5 for use
         JSR     GET67B      *gets size from 67
-        *MOVE.B  D4,D5
-        JSR     GET_IM      *gets immediate value using size
+        MOVE.B  D5,D6       *store size at D6
         MOVE.B  D4,D5
         JSR     GET345      *gets ea mode from 345
         MOVE.B  D4,D5
         JSR     GET012      *gets dest. from 012
+        MOVE.B  D6,D5       *moves size back to D5 for next SR
+        JSR     GET_IM      *gets immediate value using size
         MOVE.W  (SP)+,D4    *Restore data to D4
         RTS
 
@@ -64,12 +71,13 @@ GET_IM  CMPI.B  #0,D5
         CMPI.B  #2,D5
         BEQ     GETLONG
         
-GETBYTE MOVE.B  (A2)+,D5
+GETBYTE MOVE.B  (A2)+,D5            *this may be superfluous - i believe trailing instructions are always words
         *PUSH D5 TO BUFFER
 GETWORD MOVE.W  (A2)+,D5
         *PUSH D5 TO BUFFER
 GETLONG MOVE.L  (A2)+,D5
         *PUSH D5 TO BUFFER
+        RTS
         
 *******************************************
 *  GET345 gets the opmode from bits 345   *
@@ -79,9 +87,51 @@ GETLONG MOVE.L  (A2)+,D5
 GET345  ASL.B   #2,D5
         ASR.B   #5,D5       *isolate 345 bits to 012
         ANDI.B  #7,D5       *mask with 0111
+        CMPI.B  #7,D5       *CHECK IF == 7
+        BEQ     REGEXT
+        CMPI.B  #5,D5       *value must be less than 5 or 7
+        BGE     BADMODE     *TODO: determine what to do here.
+        CMPI.B  #4,D5
+        BEQ     RINPDEC     *should probably determine better name for register indirect predecrement -(An)
+        CMPI.B  #3,D5
+        BEQ     RINPINC     *again, (An)+ deserves a better name
+        CMPI.B  #2,D5       
+        BEQ     RINAN       *AGAIN, (An)
+        CMPI.B  #1,D5
+        BEQ     DIRADD      *An
+        CMPI.B  #0,D5
+        BEQ     DIRDATR     *Dn
+        RTS
         
+*Absolute and immediate addressing modes require
+*checking the register for extension
+*000 is absolute short
+*001 is absolute long
+REGEXT  MOVE.B  D4,D5
+        ASL.B   #5,D5
+        ASR.B   #5,D5       *Isolate bits 012 
+        CMPI.B  #1,D5
+        BGT     BADREG      *DETERMINE what to do here
+        BEQ     LONGADD
+        BLT     WORDADD
+*retrieves
+WORDADD MOVE.W  (A2)+,D5
+        *PUSH D5 TO BUFFER
+LONGADD MOVE.L  (A2)+,D5
+        *PUSH D5 TO BUFFER
+        RTS
         
-GET012
+**************************************************************
+* GET012 is used to get the register number held on bits 012 *
+* PRECONDITION - D5 will contain the binary instructtion for *
+* an opcode whose format contains eamode on bits 345 and reg *
+* on 012.                                                    *
+* POSTCONDITION - D5 will contain REGISTER NUMBER            *
+**************************************************************
+GET012  ANDI.W  #7,D5
+        ADDI.B  #$30,D5     *CONVERT D5 TO ASCII
+        *PUSH D5 TO BUFFER
+
         
 
 *///////////////////////////////////////////////////////////
@@ -90,6 +140,7 @@ GET012
    
 
     END    START        ; last line of source
+
 
 *~Font name~Courier New~
 *~Font size~10~
