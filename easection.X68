@@ -138,6 +138,12 @@ GET012  ANDI.W  #7,D5
 
 * Put variables and constants here
    
+opADDI  DC.W    'ADDI'
+opSUBI  DC.W    'SUBI'
+sizeB   DC.B    '.B'
+sizeW   DC.B    '.W'
+sizeL   DC.B    '.L'
+msgDAT  DC.W    'DATA'
 
     END    START        ; last line of source
 
