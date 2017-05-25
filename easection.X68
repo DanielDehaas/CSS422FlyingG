@@ -177,7 +177,7 @@ GET67B  ROL.B   #2,D5       *Rotate register
         CMPI.B  #2,D5
         BEQ     SIZEL       *TODO: create subroutine to add '.L' to buffer - I/O SR
         BRA     DONE
-ERR67B  JSR ERRSIZE
+ERR67B  JSR     ERRSIZE
 DONE    RTS                 
 
 SIZEB   MOVE.B  #0,D6
@@ -278,6 +278,9 @@ DIRDATR LEA opDLtr,(A1)
         TRAP    #15
         MOVE.B  #$00,D7
         RTS
+        
+*** WILL NEED TO REFACTOR THIS SECTION TO ACCOUNT
+*** FOR #<DATA>
 *************************************************
 *Absolute and immediate addressing modes require*
 *checking the register for extension            *
@@ -313,6 +316,97 @@ GET012  ANDI.W  #$07,D5
         MOVE.B  D5,(A1)
         TRAP    #15
         RTS
+        
+**************************************************************
+* EAJSR will be called when opcode == %0100111010xxxxxx      *
+* PRECONDITION - D4 will contain the binary instruction for  *
+* an opcode whose format contains eamode on bits 345 and reg *
+* on 012.                                                    *
+* POSTCONDITION - will print ea and update (A2) as needed    *
+**************************************************************
+*** BITS 345 CAN ONLY BE 010 OR 111
+*** 
+*** PSEUDO - BACKUP
+EAJSR   MOVEM.W D4,-(SP)            * BACKUP D4
+        CLR     D5
+        CLR     D7
+        JSR     GET345              * PUT EA MODE ON D7
+        CMPI.B  #$02,D7
+        BEQ     addPar
+        CLR     D5
+        MOVE.B  D4,D5
+        JSR     GET012
+        MOVEM.W (SP)+,D4
+ENDJSR  RTS
+        
+addPar  LEA     opCPar,(A1)
+        MOVE.W  #$0001,D1
+        MOVE.W  #$0001,D0
+        TRAP    #15
+        RTS
+        
+**************************************************************
+* EALEA will be called when opcode == %0100XXX111xxxxxx      *
+* PRECONDITION - D4 will contain the binary instruction for  *
+* an opcode whose format contains eamode on bits 345 and reg *
+* on 012.                                                    *
+* POSTCONDITION - will print ea and update (A2) as needed    *
+**************************************************************    
+
+**************************************************************
+* EAMFCCR WILL be called when opcode == %0100001011xxxxxx    *
+* PRECONDITION - D4 will contain the binary instruction for  *
+* an opcode whose format contains eamode on bits 345 and reg *
+* on 012.                                                    *
+* POSTCONDITION - will print ea and update (A2) as needed    *
+**************************************************************
+EAMFCCR MOVEM.W D4,-(SP)            * BACKUP D4
+        CLR     D5
+        CLR     D7
+        JSR     GET345              * PUT EA MODE ON D7
+        CLR     D5
+        MOVE.B  D4,D5
+        JSR     GET012
+        CMPI.B  #$02,D7
+        BEQ     MFCPar
+        CMPI.B  #$03,D7
+        BEQ     MFCpInc
+        CMPI.B  #$04,D7
+        BEQ     MFCPar
+        MOVEM.W (SP)+,D4
+ENDMFCR RTS
+        
+addPar  LEA     opCPar,(A1)
+        MOVE.W  #$0001,D1
+        MOVE.W  #$0001,D0
+        TRAP    #15
+        RTS
+        
+MFCpInc LEA     opPlus,(A1)
+        MOVE.W  #$0002,D1
+        MOVE.W  #$0001,D0
+        TRAP    #15
+        RTS
+
+MFCPar  LEA     opCPar,(A1)
+        MOVE.W  #$0001,D1
+        MOVE.W  #$0001,D0
+        TRAP    #15
+        RTS
+
+
+**************************************************************
+* EAMTCCR WILL be called when opcode == %0100010011xxxxxx    *
+* ASSEMBLER SYNTAX = MOVE   <EA>,CCR                         *
+* PRECONDITION - D4 will contain the binary instruction for  *
+* an opcode whose format contains eamode on bits 345 and reg *
+* on 012.                                                    *
+* POSTCONDITION - will print ea and update (A2) as needed    *
+**************************************************************
+*EAMTCCR     MOVEM.W D4,-(SP)
+*            CLR     D5
+*            CLR     D7
+          
 
 *///////////////////////////////////////////////////////////
 
@@ -336,10 +430,10 @@ opDLtr  DC.B    '(D'
 opSlsh  DC.B    '/'
 opIPDC  DC.B    '-(A'
 opIAdd  DC.B    '(A'
+opCCR   DC.B    'CCR'
 
 
 
     END    START        ; last line of source
-
 
 
