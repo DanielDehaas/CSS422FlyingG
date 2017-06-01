@@ -519,9 +519,9 @@ REGEXT      MOVE.W  D4,D5
             LEA     opCASH,A1       *DISPLAY '$' for trailing
             MOVE.W  #14,D0
             TRAP    #15
-            CMPI.W  #$0004,D7
+            CMPI.W  #$0004,D6
             BEQ     SIZEMATS
-            CMPI.W  #$0001,D7
+            CMPI.W  #$0001,D6
             BEQ     GETTLONG
             BRA     GETTWORD        ****MAY NEED TO CLEAN UP 
                                     ****BRANCHING AND RTS
@@ -529,12 +529,10 @@ REGEXT      MOVE.W  D4,D5
 * used for #<data>, need this to determine if we need word or long
 ***bug- THIS PART WILL NOT WORK FOR ADDA WHERE THE OPMODE
 SIZEMATS    JSR     MASK67          *Ensure size is on d6
-            CMPI.B  #$02,D5         
+            CMPI.B  #$02,D6
             BEQ     GETTLONG
-            CMPI.B  #$01,D5         
-            BEQ     GETTWORD        
-            BRA     GETTBYTE
-ENDREGEXT   RTS     
+            BRA     GETTWORD
+ENDREGEXT   RTS      
             
 GETTLONG    MOVE.W  #$0008,D1
             MOVE.W  #$0001,D0
@@ -549,15 +547,10 @@ GETTWORD    MOVE.W  #$0008,D1
             JSR     PRINTD2W
             BRA     ENDREGEXT
             
-GETTBYTE    MOVE.W  #$0008,D1
-            MOVE.W  #$0001,D0
-            ADDA.L  #$2,A2
-            MOVE.W  (A2),D2
-            JSR     PRINTD2B
-            BRA     ENDREGEXT
+*GETTBYTE    ***********DO SHIT HERE********************
      
      
-****////////////I/O//////////////////******************
+*****////////////I/O//////////////////******************
 *//////////////////// I/O Subroutines //////////////////////
 
 
@@ -603,21 +596,6 @@ PRINTD2W    JSR     ADDRRESETW
 
 
 
-*--------------------- PRINTD2B -----------------------
-* Prints the hex data of D2.B as string (no whitespace)
-*------------------------------------------------------
-PRINTD2B    JSR     ADDRRESETW
-            JSR     HEX2STRING
-            MOVE.L  #CurAddrOut,A4
-            MOVE.W  D2,(A4)
-            MOVE.B  #$00,2(A4)
-            JSR     ADDRPRNT
-            JSR     ADDRRESETL
-            MOVE.L  #SafeOutStr,A4
-            RTS
-            
-            
-            
 *-------------------- STRING2HEX ----------------------
 * Converts string at A1 to hex value at D2
 * Input: (A1) (string), D1.W (# of chars)
@@ -916,7 +894,7 @@ opSLASH     DC.B    '/',0
 opCASH      DC.B    '$',0
 opHASH      DC.B    '#',0
 
-*********************************************
+**********************************************
 *************zach stuff***********************    
 LSR         DC.B    'LSR.',0
 ROL         DC.B    'ROL.',0
@@ -955,7 +933,4 @@ JSRDATA1    EQU     $0001FFFE   * Uses Byte to be used in Subroutines for ANY pu
             END    START        ; last line of source
 
 
-*~Font name~Courier New~
-*~Font size~9~
-*~Tab type~1~
-*~Tab size~4~
+
