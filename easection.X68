@@ -30,7 +30,7 @@ START:                  ; first instruction of program
 EAADDI      LEA     opHASH,A1
             *MOVE.W  #1,D1       *only print 1 byte
             *MOVE.W  #1,D0      
-            MOVE.W  #14,D0 *set trap condition
+            MOVE.W  #14,D0      *set trap condition
             TRAP    #15             *print #
             LEA     opCASH,A1       
             TRAP    #15
@@ -44,6 +44,24 @@ ENDIMATH    JSR     EAFORM1
             RTS
 EASUBI      JMP     EAADDI
 
+*****************************************************************
+* ODD MODES; MOVEQ, MOVEM                                       *
+*****************************************************************
+EAMOVEQ     MOVE.L  #14,D0
+            MOVE.W  D4,D5
+            LEA     opHASH,A1
+            TRAP    #15
+            MOVE.B  D5,D7
+            JSR     GETREG
+            MOVE.W  #14,D0
+            LEA     opCOMMA,A1
+            TRAP    #15
+            LEA     opDLTR,A1
+            TRAP    #15
+            JSR     MASK9AB
+            MOVE.B  D5,D7
+            JSR     GETREG
+ENDMOVEQ    JMP     ENDMODE2
 ******************************************************************
 * HANDLES JSR, MOVE FROM CCR, MOVE TO CCR, MOVE FROM SR, ADDQ,LEA*
 ******************************************************************
