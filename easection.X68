@@ -14,10 +14,12 @@ START:                  ; first instruction of program
             *MOVE.W   #$EB66,D4
             *MOVE.W  #$DA04,D4
             *MOVE.W  #$DAFC,D4
-            MOVE.W  #$DFB9,D4
-            MOVEA.L #$0000A000,A2
+            *MOVE.W  #$DFB9,D4
+            *MOVE.W  #$EF00,D4
+            *MOVE.W  #$EF79,D4
+            MOVE.W  #$EA3C,D4
             
-
+            MOVEA.L #$0000A000,A2
             MOVE.L  #$12345678,(A2)+
             MOVE.L  #$ABCDEF01,(A2)
             MOVE.L  -(A2),A6
@@ -27,9 +29,9 @@ START:                  ; first instruction of program
             *BRA      EAMOVEFCCR
             *BRA     EAADDA
             *BRA     EABITSHIFT
-            BRA     EAADD
-            
-            
+            *BRA     EAADD
+            BRA     EABITSHIFT
+            ROR.B   D5,D4
             
 ***************DELETE WHEN DONE WITH PRES...*********************
 EAMOVE      RTS
@@ -228,9 +230,9 @@ EABITSHIFT  MOVEM.W D4,-(SP)
             CLR.L   D5
             MOVE.W  D4,D5
             ASR.W   #5,D5
-            ANDI.W  #5,D5
+            ANDI.W  #1,D5
             CMPI.B  #1,D5
-            MOVE.W  D4,D5
+            *MOVE.W  D4,D5
             BEQ     SYNCASE1
             BRA     SYNCASE2  
 
@@ -242,9 +244,7 @@ SYNCASE1    LEA     opDLTR,A1
             MOVE.L  #14,D0
             TRAP    #15
             JSR     MASK9AB
-            MOVE.L  D6,D7  
-            LSR.W   #$08,D7
-            LSR.W   #$01,D7         
+            MOVE.L  D6,D7         
             JSR     GETREG
             MOVE.L  #14,D0
             LEA     opCOMMA,A1
@@ -261,8 +261,6 @@ SYNCASE2    LEA     opHASH,A1
             TRAP    #15
             JSR     MASK9AB
             MOVE.L  D6,D7
-            LSR.W   #$08,D7
-            LSR.W   #$01,D7
             JSR     GETREG
             MOVE.L  #14,D0
             LEA     opCOMMA,A1
@@ -997,6 +995,7 @@ JSRDATA1    EQU     $0001FFFE   * Uses Byte to be used in Subroutines for ANY pu
 
 
             END    START        ; last line of source
+
 
 
 
