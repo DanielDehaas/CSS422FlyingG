@@ -11,16 +11,32 @@ START:                  ; first instruction of program
             *MOVE.W  #$4EB9,D4      *JSR DIRECT-LONG
             *MOVE.W  #$42DD,D4
             *MOVE.W  #$DFC3,D4
-            MOVE.W   #$EB66,D4
+            *MOVE.W   #$EB66,D4
+            *MOVE.W  #$DA04,D4
+            *MOVE.W  #$DAFC,D4
+            MOVE.W  #$DFB9,D4
             MOVEA.L #$0000A000,A2
-            MOVE.L  #$12345678,(A2)
             
+
+            MOVE.L  #$12345678,(A2)+
+            MOVE.L  #$ABCDEF01,(A2)
+            MOVE.L  -(A2),A6
             *BRA     EAADDI    
             *BRA     ENDIMATH
             *BRA     EAJSR
             *BRA      EAMOVEFCCR
             *BRA     EAADDA
-            BRA     EABITSHIFT
+            *BRA     EABITSHIFT
+            BRA     EAADD
+            
+            
+            
+***************DELETE WHEN DONE WITH PRES...*********************
+EAMOVE      RTS
+EAMOVEM     RTS
+
+
+
 *****************************************************************
 * Specific ea code sections. handle nuanced behavior for each   *
 * opcode which needs it                                         *
@@ -161,8 +177,7 @@ EAFORM1     MOVEM.W D4,-(SP)    *BACKUP D4
             JSR     MASK012
             JSR     MASK345     
             LEA     EAMODTBL,A6
-            MULU    #6,D5   
-            *SUBI    #18,D5         
+            MULU    #6,D5        
             JSR     0(A6,D5)   *Jump indirect with index
 ENDFORM1    MOVEM.W (SP)+,D4
             RTS           
@@ -266,9 +281,56 @@ SYNCASE2    LEA     opHASH,A1
 *                                                               *
 *                                                               *
 *****************************************************************
-EAARITHM    *FIGURE THIS BITCH OUT
+EAARITHM    MOVEM.W D4,-(SP)
+            MOVE.W  D4,D5
+            JSR     MASK678
+            CMPI.B  #7,D6
+            BEQ     SUBTRACT7
+RETARITHM   CMPI.B  #3,D6
+            BGT     ARITHM2            
+            BRA     ARITHM1
+            
+ENDARITHM   MOVEM.W (SP)+,D4
+            RTS
+            
 
-ENDARITHM   RTS
+SUBTRACT7   SUBI.B  #7,D6
+            BRA     RETARITHM
+            
+ARITHM1     MOVE.W  D4,D5
+            JSR     MASK012
+            JSR     MASK345     
+            LEA     EAMODTBL,A6
+            MULU    #6,D5        
+            JSR     0(A6,D5)
+            LEA     opCOMMA,A1
+            MOVE.W  #14,D0
+            TRAP    #15
+            MOVE.W  D4,D5
+            LEA     opDLTR,A1
+            TRAP    #15
+            JSR     MASK9AB
+            MOVE.W  D5,D7
+            JSR     GETREG
+            BRA     ENDARITHM
+            
+ARITHM2     MOVE.W  D4,D5
+            LEA     opDLTR,A1
+            MOVE.W  #14,D0
+            TRAP    #15
+            JSR     MASK9AB
+            MOVE.W  D6,D7
+            JSR     GETREG
+            LEA     opCOMMA,A1
+            MOVE.W  #14,D0
+            TRAP    #15
+            MOVE.W  D4,D5
+            JSR     MASK012
+            JSR     MASK345
+            LEA     EAMODTBL,A6
+            MULU    #6,D5
+            JSR     0(A6,D5)
+            BRA     ENDARITHM
             
 EAADD       JSR     EAARITHM
 ENDEAADD    JMP     ENDMODE3
@@ -302,31 +364,34 @@ ENDMODE3    RTS
 *       -PROPOSED- define logic to not use
 *       - jump table when ea == 111
 ****************************************************************
+
+**** PRESENTATION MODE... UNCOMMENT LINES BETWEEN EAADA AND ENDADDA
 EAADDA      CLR.L   D5              
-            MOVE.W  #14,D0      
-            MOVE.W  D4,D5       
-            JSR     MASK012     *PUT ea reg/extension on d7
-            CLR.W   D5          
-            CLR.L   D6
-            MOVE.W  D4,D5
-            JSR     MASK678     *put
-            CMPI.B  #3,D6
-            BEQ     PUSH1
-            CMPI.B  #7,D6
-            BEQ     PUSH2
-RETEADDA    JSR     MASK345
-            LEA     EAMODTBL,A6
-            MULU    #6,D5   
-            JSR     0(A6,D5)   *Jump indirect with index
-            MOVE.W  #14,D0
-            LEA     opCOMMA,A1
-            TRAP    #15
-            LEA     opALTR,A1
-            TRAP    #15
-            MOVE.W  D4,D5
-            ROL.W   #7,D5
-            JSR     SKIP012
-            JSR     GETREG
+*            MOVE.W  #14,D0      
+*            MOVE.W  D4,D5       
+*            JSR     MASK012     *PUT ea reg/extension on d7
+*            CLR.W   D5          
+*            CLR.L   D6
+*            MOVE.W  D4,D5
+*            JSR     MASK678     *put
+*            CMPI.B  #3,D6
+*            BEQ     PUSH1
+*            CMPI.B  #7,D6
+*            BEQ     PUSH2
+*RETEADDA    JSR     MASK345
+RETEADDA    MOVE.B  #0,D7
+*            LEA     EAMODTBL,A6
+*            MULU    #6,D5   
+*            JSR     0(A6,D5)   *Jump indirect with index
+*            MOVE.W  #14,D0
+*            LEA     opCOMMA,A1
+*            TRAP    #15
+*            LEA     opALTR,A1
+*            TRAP    #15
+*            MOVE.W  D4,D5
+*            ROL.W   #7,D5
+*            JSR     SKIP012
+*            JSR     GETREG
 ENDADDA     RTS
 
 PUSH1       MOVE.W  #1,D6
@@ -480,7 +545,7 @@ END67       RTS
 *************************************************************
 * MASK678 masks word on D5 and puts result on D6            *
 * PRE - D4 contains instruction.                            *
-* POST - D6 will contain the DATA from bits 78              *
+* POST - D6 will contain the DATA from bits 678             *
 *************************************************************
 MASK678     CLR.L   D5
             CLR.L   D6
@@ -488,6 +553,7 @@ MASK678     CLR.L   D5
             ANDI.W  #$01C0,D5       *mask 0000000111000000
             MOVE.W  D5,D6
             LSR.W   #$06,D5
+            MOVE.W  D5,D6
 END678      RTS
 
 *************************************************************
@@ -499,9 +565,9 @@ MASK9AB     CLR.L   D5
             CLR.L   D6
             MOVE.W  D4,D5
             ANDI.W  #$0E00,D5       *mask 0000111000000000
-            MOVE.W  D5,D6
             LSR.W   #$08,D5
             LSR.W   #$01,D5
+            MOVE.W  D5,D6
 END9AB      RTS
 
 
@@ -519,9 +585,9 @@ REGEXT      MOVE.W  D4,D5
             LEA     opCASH,A1       *DISPLAY '$' for trailing
             MOVE.W  #14,D0
             TRAP    #15
-            CMPI.W  #$0004,D6
+            CMPI.W  #$0004,D7
             BEQ     SIZEMATS
-            CMPI.W  #$0001,D6
+            CMPI.W  #$0001,D7
             BEQ     GETTLONG
             BRA     GETTWORD        ****MAY NEED TO CLEAN UP 
                                     ****BRANCHING AND RTS
@@ -534,14 +600,14 @@ SIZEMATS    JSR     MASK67          *Ensure size is on d6
             BRA     GETTWORD
 ENDREGEXT   RTS      
             
-GETTLONG    MOVE.W  #$0008,D1
-            MOVE.W  #$0001,D0
+GETTLONG    *MOVE.W  #$0008,D1
+            *MOVE.W  #$0001,D0
             ADDA.L  #$2,A2
             MOVE.W  (A2),D2  
             JSR     PRINTD2W
                         
-GETTWORD    MOVE.W  #$0008,D1
-            MOVE.W  #$0001,D0
+GETTWORD    *MOVE.W  #$0008,D1
+            *MOVE.W  #$0001,D0
             ADDA.L  #$2,A2
             MOVE.W  (A2),D2
             JSR     PRINTD2W
