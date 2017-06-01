@@ -44,9 +44,9 @@ ENDIMATH    JSR     EAFORM1
             RTS
 EASUBI      JMP     EAADDI
 
-*****************************************************************
-* HANDLES JSR, MOVE FROM CCR, MOVE TO CCR, MOVE FROM SR         *
-*****************************************************************
+******************************************************************
+* HANDLES JSR, MOVE FROM CCR, MOVE TO CCR, MOVE FROM SR, ADDQ,LEA*
+******************************************************************
 ***PRE-%0100111010XXXXXX*******
 ***MODE CAN ONLY BE 010 OR 111*
 *******************************
@@ -62,26 +62,26 @@ EASUBI      JMP     EAADDI
 
 EAJSR       MOVE.W  D4,D5
             JSR     EAFORM1
-ENDEAJSR    JSR     ENDMODE2
+ENDEAJSR    JMP     ENDMODE2
 
 ***PRE-%0100001011XXXXXX***
 ***MODE CANNOT BE 001******
 ***************************
 EAMOVEFCCR  MOVE.W  D4,D5
             JSR     EAFORM1
-ENDMOVEFCCR JSR     ENDMODE2
+ENDMOVEFCCR JMP     ENDMODE2
 
 ***PRE-%0100010011XXXXXX***
 ***MODE CANNOT BE 001******
 ***************************
 EAMOVE2CCR  JSR     EAFORM1
-ENDMOVE2CCR JSR     ENDMODE2
+ENDMOVE2CCR JMP     ENDMODE2
 
 ***PRE-%0100000011XXXXXX***
 ***MODE CANNOT BE 001******
 ***************************
 EAMOVESR    JSR     EAFORM1
-ENDMOVESR   JSR     ENDMODE2
+ENDMOVESR   JMP     ENDMODE2
 
 ***PRE-%11100XXX11XXXXXX****
 ***THIS IS FOR MEM REGISTER*
@@ -89,7 +89,37 @@ ENDMOVESR   JSR     ENDMODE2
 ***ROL,ROR******************
 ****************************
 EASHIFTM    JSR     EAFORM1
-ENDSHIFTM   JSR     ENDMODE2
+ENDSHIFTM   JMP     ENDMODE2
+
+***PRE-%0101XXX0XXXXXXXX****
+***EAADDQ - SYNTAX = *******
+***ADDQ.s #<8BIT>,Ea********
+EAADDQ      MOVE.W  D4,D5
+            LEA     opHASH,A1
+            MOVE.L  #0,D0
+            TRAP    #15
+            JSR     MASK9AB
+            MOVE.W  D5,D1
+            MOVE.W  #3,D0
+            TRAP    #15
+            LEA     opCOMMA,A1
+            MOVE.L  #0,D0
+            TRAP    #15
+            JSR     EAFORM1
+ENDADDQ     JSR     ENDMODE2
+
+***PRE-%0100XXX111XXXXXX****
+EALEA       JSR     EAFORM1
+            CLR.L   D0
+            LEA     opCOMMA,A1
+            MOVE.W  #14,D0
+            TRAP    #15
+            LEA     opALTR,A1
+            TRAP    #15
+            JSR     MASK9AB
+            MOVE.L  D5,D7
+            JSR     GETREG
+ENDLEA      JMP     ENDMODE2
 
 ENDMODE2    RTS   
            
@@ -223,22 +253,22 @@ EAARITHM    *FIGURE THIS BITCH OUT
 ENDARITHM   RTS
             
 EAADD       JSR     EAARITHM
-ENDEAADD    JSR     ENDMODE3
+ENDEAADD    JMP     ENDMODE3
 
 EAAND       JSR     EAARITHM
-ENDEAAND    JSR     ENDMODE3
+ENDEAAND    JMP     ENDMODE3
 
 EAOR        JSR     EAARITHM
-ENDEAOR     JSR     ENDMODE3
+ENDEAOR     JMP     ENDMODE3
 
 EASUB       JSR     EAARITHM
-ENDEASUB    JSR     ENDMODE3
+ENDEASUB    JMP     ENDMODE3
 
 EADIVU      JSR     EAARITHM
-ENDEADIVU   JSR     ENDMODE3
+ENDEADIVU   JMP     ENDMODE3
 
 EAMULS      JSR     EAARITHM
-ENDEAMULS   JSR     ENDMODE3
+ENDEAMULS   JMP     ENDMODE3
 
 ENDMODE3    RTS
 
@@ -297,6 +327,8 @@ EAMODTBL    JMP     MODE000     * Dn
             JMP     MODE010     * (An)
             JMP     MODE011     * (An)+
             JMP     MODE100     * -(An)
+            JMP     MODE101     * INVALID
+            JMP     MODE110     * INVALID
             JMP     MODE111     * Direct Addressing/Immediate
             
 
@@ -341,23 +373,20 @@ MODE010     LEA     opOPAR,A1       *'(' put at A1
             
             
 MODE011     LEA     opOPAR,A1       *'(' put at A1
-            MOVE.W  #$0001,D1       *only print 1 byte
-            MOVE.W  #$0001,D0       *set trap condition
+            MOVE.W  #14,D0
             TRAP    #15             *print '('
             LEA     opALTR,A1       *Letter 'A' put at A1
             TRAP    #15             *print 'A'
             JSR     GETREG          *GET REG NUMBER
             LEA     opCPAR,A1       *')'
-            MOVE.W  #$0001,D1       *only print 1 byte
-            MOVE.W  #$0001,D0       *set trap condition
+            MOVE.W  #14,D0
             TRAP    #15
             LEA     opPLUS,A1       *'+'
             TRAP    #15
             BRA     ENDMODE
 
-MODE100     LEA     opMINUS,A1      *'-' -> A1
-            MOVE.W  #$0001,D1       *only print 1 byte
-            MOVE.W  #$0001,D0       *set trap condition
+MODE100     LEA     opMINUS,A1      *'-' -> A1           
+            MOVE.W  #14,D0
             TRAP    #15             *print '-'
             LEA     opOPAR,A1       *'(' put at A1
             TRAP    #15             *print '('
@@ -365,8 +394,7 @@ MODE100     LEA     opMINUS,A1      *'-' -> A1
             TRAP    #15             *print 'A'
             JSR     GETREG          *GET REG NUMBER
             LEA     opCPAR,A1       *')'
-            MOVE.W  #$0001,D1       *only print 1 byte
-            MOVE.W  #$0001,D0       *set trap condition
+            MOVE.W  #14,D0
             TRAP    #15
             BRA     ENDMODE
             
@@ -385,7 +413,7 @@ ENDMODE     RTS
 * GETREG is used to get the register number held on bits 012 *
 * PRECONDITION - D5 will contain the binary instruction for  *
 * an opcode whose format contains eamode on bits 345 and reg *
-* on 012.                                                    *
+* on 012. D7 MUST CONTAIN ONLY WHAT IS TO BE PRINTED TO SCRN *
 * POST - D5 will contain REGISTER NUMBER, NUMBER IS PRINTED  *
 **************************************************************
 GETREG      *ANDI.W  #$0007,D5
@@ -427,6 +455,7 @@ MASK67      CLR.L   D5
             CLR.L   D6
             MOVE.W  D4,D5
             ANDI.W  #$00C0,D5       *mask 0000000011000000
+            LSR.B   #6,D5
             MOVE.W  D5,D6
 END67       RTS
 
@@ -884,5 +913,6 @@ JSRDATA1    EQU     $0001FFFE   * Uses Byte to be used in Subroutines for ANY pu
 
 
             END    START        ; last line of source
+
 
 
