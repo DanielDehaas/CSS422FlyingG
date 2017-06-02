@@ -17,7 +17,8 @@ START:                  ; first instruction of program
             *MOVE.W  #$DFB9,D4
             *MOVE.W  #$EF00,D4
             *MOVE.W  #$EF79,D4
-            MOVE.W  #$EA3C,D4
+            *MOVE.W  #$EA3C,D4
+            MOVE.W  #$1695,D4
             
             MOVEA.L #$0000A000,A2
             MOVE.L  #$12345678,(A2)+
@@ -30,13 +31,10 @@ START:                  ; first instruction of program
             *BRA     EAADDA
             *BRA     EABITSHIFT
             *BRA     EAADD
-            BRA     EABITSHIFT
-            ROR.B   D5,D4
-            
-***************DELETE WHEN DONE WITH PRES...*********************
-EAMOVE      RTS
-EAMOVEM     RTS
-
+            *BRA     EABITSHIFT
+            *ROR.B   D5,D4
+            BRA     EAMOVE
+            *MOVE.W  (A5),(A3)
 
 
 *****************************************************************
@@ -80,6 +78,9 @@ EAMOVEQ     MOVE.L  #14,D0
             MOVE.B  D5,D7
             JSR     GETREG
 ENDMOVEQ    JMP     ENDMODE2
+
+
+EAMOVEM     RTS
 ******************************************************************
 * HANDLES JSR, MOVE FROM CCR, MOVE TO CCR, MOVE FROM SR, ADDQ,LEA*
 ******************************************************************
@@ -156,6 +157,24 @@ EALEA       JSR     EAFORM1
             MOVE.L  D5,D7
             JSR     GETREG
 ENDLEA      JMP     ENDMODE2
+
+
+EAMOVE      JSR     EAFORM1
+            MOVE.W  #14,D0
+            LEA     opCOMMA,A1
+            TRAP    #15
+            MOVE.W  D4,D5
+            CLR.W   D7
+            JSR     MASK678
+            MOVE.W  D6,D7
+            ASL.B   #3,D7
+            JSR     MASK9AB
+            ADD.B   D6,D7
+            CLR.W   D4
+            MOVE.W  D7,D4
+            JSR     EAFORM1
+ENDMOVE     RTS
+
 
 ENDMODE2    RTS   
            
