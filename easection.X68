@@ -5,7 +5,41 @@
 * Description:
 *-----------------------------------------------------------
     ORG    $1000
-START:                  ; first instruction of program
+START:                  
+*************************************************************
+* EA section testing relied heavily on white box and        *
+*   regression testing. By the time integration testing was *
+*   performed, most of the bugs found were simple programmer*
+*   errors, rather than design flaws.
+* EA section testing instructions. For each instruction     *
+*   category I try a combination of possible ea codes. i    *
+*   begin by loading the D4 register ( since that is where  *
+*   the instruction will be when opmode calls ea. )         *
+*   A2 is loaded with a memory address which contains test  *
+*   data.                                                   *
+* For each opcode category ( ie. subi & addi, muls, add, or *
+*   & divu, move & movea ) I test with a simple case ( ie   *
+*   source and destination are registers ), and more        *
+*   more involved cases ( ie move immediate data to direct  *
+*   address. )                                              *
+* This method of testing, which was necessary due to the    *
+*   modular way we implemented our program ( I/O, EA, and   *
+*   opcodes as seperate sections, ) turned out to be both   *
+*   effective and thorough. As i would find bugs within EA  *
+*   sections for specific instructions and instruction      *
+*   categories, I was forced to step through the various    *
+*   helper functions ( masking, output, pointer location. ) *
+*   By the time I had debugged a few specific opcodes I was *
+*   able to determine other flaws in my design as well as   *
+*   simple mistakes that were made due to tiredness : )     *
+*   At integration, there were only a few, rather easy to   *
+*   fix bugs remaining.                                     *
+* TESTING INSTRUCTIONS: uncomment the MOVE instruction and  *
+*   the corresponding BRA instruction. Due to the design for*
+*   integration with I/O and opcode, this program contains  *
+*   an 'extra' RTS which will push F's to the PC and crash  *
+*   after the unit has been ran.                            *
+*************************************************************
             *MOVE.W  #$06B9,D4      *SUBI/ADDI
             *MOVE.W  #$4E97,D4       *JSR (An)     
             *MOVE.W  #$4EB9,D4      *JSR DIRECT-LONG
@@ -13,29 +47,38 @@ START:                  ; first instruction of program
             *MOVE.W  #$DFC3,D4
             *MOVE.W   #$EB66,D4
             *MOVE.W  #$DA04,D4
-            *MOVE.W  #$DAFC,D4
+            *MOVE.W  #$D7FC,D4
             *MOVE.W  #$DFB9,D4
             *MOVE.W  #$EF00,D4
             *MOVE.W  #$EF79,D4
             *MOVE.W  #$EA3C,D4
-            MOVE.W  #$1695,D4
+            *MOVE.W  #$1695,D4
+            *MOVE.L  #$23F9,D4
+            *MOVE.W  #$92C1,D4
+            *MOVE.W  #$D4E7,D4
+            MOVE.W  #$DAFC,D4
+            *MOVE.W  #$D5FC,D4
+            *MOVE.W  #$DBFC,D4
+            ADDA.W  $1234,A2
             
             MOVEA.L #$0000A000,A2
             MOVE.L  #$12345678,(A2)+
-            MOVE.L  #$ABCDEF01,(A2)
+            MOVE.L  #$ABCDEF01,(A2)+
+            MOVE.L  #$12312412,(A2)
+            MOVE.L  -(A2),A6
             MOVE.L  -(A2),A6
             *BRA     EAADDI    
             *BRA     ENDIMATH
             *BRA     EAJSR
-            *BRA      EAMOVEFCCR
-            *BRA     EAADDA
+            *BRA     EAMOVEFCCR
+            BRA     EAADDA
             *BRA     EABITSHIFT
             *BRA     EAADD
             *BRA     EABITSHIFT
             *ROR.B   D5,D4
-            BRA     EAMOVE
+            *BRA     EAMOVE
             *MOVE.W  (A5),(A3)
-
+            *BRA     EASUB
 
 *****************************************************************
 * Specific ea code sections. handle nuanced behavior for each   *
@@ -79,8 +122,29 @@ EAMOVEQ     MOVE.L  #14,D0
             JSR     GETREG
 ENDMOVEQ    JMP     ENDMODE2
 
+******************************************************************
+*****************MOVEM ea WORK ***********************************
+******************************************************************
+EAMOVEM     CLR.L   D5
+            MOVE.W  D4,D5
+            ANDI.W  #$0400,D5
+            ROL.W   #6,D5
+            CMPI.B  #1,D5
+            BEQ     MOVEMM2R        * MEM -> REG
+            BRA     MOVEMR2M        * REG -> MEM
+ENDMOVEM    RTS
 
-EAMOVEM     RTS
+*** SYNTAX -    MOVEM.s <list>,<ea>
+MOVEMR2M        
+
+*** SYNTAX -    MOVEM.s <ea>,<list>
+MOVEMM2R    JSR     EAFORM1
+            LEA     opCOMMA,A1
+            MOVE.W  #14,D0
+            TRAP    #15
+            
+
+  
 ******************************************************************
 * HANDLES JSR, MOVE FROM CCR, MOVE TO CCR, MOVE FROM SR, ADDQ,LEA*
 ******************************************************************
@@ -383,39 +447,49 @@ ENDMODE3    RTS
 ****************************************************************
 
 **** PRESENTATION MODE... UNCOMMENT LINES BETWEEN EAADA AND ENDADDA
-EAADDA      CLR.L   D5              
-*            MOVE.W  #14,D0      
-*            MOVE.W  D4,D5       
-*            JSR     MASK012     *PUT ea reg/extension on d7
-*            CLR.W   D5          
-*            CLR.L   D6
-*            MOVE.W  D4,D5
-*            JSR     MASK678     *put
-*            CMPI.B  #3,D6
-*            BEQ     PUSH1
-*            CMPI.B  #7,D6
-*            BEQ     PUSH2
-*RETEADDA    JSR     MASK345
-RETEADDA    MOVE.B  #0,D7
-*            LEA     EAMODTBL,A6
-*            MULU    #6,D5   
-*            JSR     0(A6,D5)   *Jump indirect with index
-*            MOVE.W  #14,D0
-*            LEA     opCOMMA,A1
-*            TRAP    #15
-*            LEA     opALTR,A1
-*            TRAP    #15
-*            MOVE.W  D4,D5
-*            ROL.W   #7,D5
-*            JSR     SKIP012
-*            JSR     GETREG
-ENDADDA     RTS
-
-PUSH1       MOVE.W  #1,D6
-            BRA     RETEADDA
+EAADDA       CLR.L   D5
+            MOVE.W  D4,D5
+            JSR     MASK345
+            CMPI.B  #7,D5
+            BEQ     ITS7
+RETEAADDA   MOVE.W  D4,D5
+            JSR     MASK345
+            LEA     EAMODTBL,A6
+            MULU    #6,D5
+            JSR     0(A6,D5)
+RETFI4      MOVE.W  #14,D0
+            LEA     opCOMMA,A1
+            TRAP    #15
+            LEA     opALTR,A1
+            TRAP    #15
+            MOVE.W  D4,D5
+            LSR.W   #4,D5
+            LSR.B   #5,D5
+            JSR     SKIP012
+            JSR     GETREG
+ENDADDA     RTS     
             
-PUSH2       MOVE.W  #2,D6
-            BRA     RETEADDA
+ITS7        MOVE.W  D4,D5
+            JSR     MASK012
+            CMPI.B  #0,D7
+            BEQ     RETEAADDA
+            BRA     GETADDAL
+            
+GETADDAL    CMPI.B  #1,D7
+            BEQ     ITSONE
+            BRA     ITSFOUR
+
+ITSONE      JSR     INSDIRMEM
+            BRA     RETFI4
+
+ITSFOUR     JSR     INSDAT
+            MOVE.W  D4,D5
+            JSR     MASK678
+            CMPI.W  #3,D6
+            BEQ     RETFI4
+            JSR     GETTWORD 
+                
+DONEIMM     JMP     RETFI4
 
 *****************************************************************
 * EA MODE TABLE - CALLED
@@ -445,14 +519,22 @@ MODE000     LEA     opDLTR,A1       *Letter 'D' put at A1
             *MOVE.W  #$0001,D0       *set trap condition
             MOVE.W  #14,D0
             TRAP    #15             *print D
+            *****************************************
+             **ADDED LATE************
+            MOVE    D4,D5
+            JSR     MASK012
             JSR     GETREG          *GET REG NUMBER
             BRA     ENDMODE
             
 MODE001     LEA     opALTR,A1       *Letter 'A' put at A1
             *MOVE.W  #$0001,D1       *only print 1 byte
             *MOVE.W  #$0001,D0       *set trap condition
+            *******************************************
+             **ADDED LATE************
             MOVE.W  #14,D0
             TRAP    #15             *print A
+            MOVE    D4,D5
+            JSR     MASK012
             JSR     GETREG          *GET REG NUMBER
             BRA     ENDMODE
             
@@ -463,6 +545,11 @@ MODE010     LEA     opOPAR,A1       *'(' put at A1
             TRAP    #15             *print '('
             LEA     opALTR,A1       *Letter 'A' put at A1
             TRAP    #15             *print 'A'
+            
+            ************************************
+            **ADDED LATE************
+            MOVE    D4,D5
+            JSR     MASK012
             JSR     GETREG          *GET REG NUMBER
             LEA     opCPAR,A1       *')'
             *MOVE.W  #$0001,D1       *only print 1 byte
@@ -477,6 +564,10 @@ MODE011     LEA     opOPAR,A1       *'(' put at A1
             TRAP    #15             *print '('
             LEA     opALTR,A1       *Letter 'A' put at A1
             TRAP    #15             *print 'A'
+            *****************************************
+             **ADDED LATE************
+            MOVE.W  D4,D5
+            JSR     MASK012
             JSR     GETREG          *GET REG NUMBER
             LEA     opCPAR,A1       *')'
             MOVE.W  #14,D0
@@ -492,6 +583,10 @@ MODE100     LEA     opMINUS,A1      *'-' -> A1
             TRAP    #15             *print '('
             LEA     opALTR,A1       *Letter 'A' put at A1
             TRAP    #15             *print 'A'
+            *****************************************
+            ***ADDED LATE************
+            MOVE.W  D4,D5
+            JSR     MASK012
             JSR     GETREG          *GET REG NUMBER
             LEA     opCPAR,A1       *')'
             MOVE.W  #14,D0
@@ -599,11 +694,12 @@ END9AB      RTS
 *************************************************************
 
 REGEXT      MOVE.W  D4,D5
-            LEA     opCASH,A1       *DISPLAY '$' for trailing
+INSDAT      CMPI.W  #$0004,D7
+            BEQ     PUSHHASH
+            *BEQ     SIZEMATS
+INSDIRMEM   LEA     opCASH,A1       *DISPLAY '$' for trailing
             MOVE.W  #14,D0
             TRAP    #15
-            CMPI.W  #$0004,D7
-            BEQ     SIZEMATS
             CMPI.W  #$0001,D7
             BEQ     GETTLONG
             BRA     GETTWORD        ****MAY NEED TO CLEAN UP 
@@ -612,7 +708,7 @@ REGEXT      MOVE.W  D4,D5
 * used for #<data>, need this to determine if we need word or long
 ***bug- THIS PART WILL NOT WORK FOR ADDA WHERE THE OPMODE
 SIZEMATS    JSR     MASK67          *Ensure size is on d6
-            CMPI.B  #$02,D6
+ADDAINSRT   CMPI.B  #$02,D6
             BEQ     GETTLONG
             BRA     GETTWORD
 ENDREGEXT   RTS      
@@ -629,7 +725,13 @@ GETTWORD    *MOVE.W  #$0008,D1
             MOVE.W  (A2),D2
             JSR     PRINTD2W
             BRA     ENDREGEXT
-            
+   
+PUSHHASH    LEA     opHASH,A1
+            MOVE.W  #14,D0
+            TRAP    #15
+            LEA     opCASH,A1       *DISPLAY '$' for trailing
+            TRAP    #15
+            BRA     SIZEMATS         
 *GETTBYTE    ***********DO SHIT HERE********************
      
      
@@ -1014,6 +1116,8 @@ JSRDATA1    EQU     $0001FFFE   * Uses Byte to be used in Subroutines for ANY pu
 
 
             END    START        ; last line of source
+
+
 
 
 
